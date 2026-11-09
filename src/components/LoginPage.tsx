@@ -2,13 +2,17 @@ import React, { useState } from 'react';
 import { User, Project } from '../types';
 import { getStoredProjects, createNewProject } from '../services/projectStorage';
 import { PRESET_TEACHER } from '../services/authService';
+import { registerStudentAccount, authenticateStudent } from '../services/accountService';
 import { 
   Network, 
   GraduationCap, 
   ShieldCheck, 
   KeyRound, 
   ArrowRight, 
-  AlertCircle
+  AlertCircle,
+  UserPlus,
+  LogIn,
+  CheckCircle2
 } from 'lucide-react';
 
 interface LoginPageProps {
@@ -18,45 +22,52 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [roleTab, setRoleTab] = useState<'student' | 'teacher'>('student');
 
-  // Student Form Fields: ชื่อจริง-นามสกุล, ห้องเรียน, ชื่อผู้ใช้, รหัสผ่าน
-  const [fullName, setFullName] = useState('');
-  const [classroom, setClassroom] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  // Student auth mode: 'login' | 'register'
+  const [studentMode, setStudentMode] = useState<'login' | 'register'>('login');
+
+  // Login form state
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  // Register form state: ชื่อจริง-นามสกุล, ห้องเรียน, ชื่อผู้ใช้, รหัสผ่าน
+  const [regFullName, setRegFullName] = useState('');
+  const [regClassroom, setRegClassroom] = useState('');
+  const [regUsername, setRegUsername] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [regError, setRegError] = useState('');
+  const [regSuccessNotice, setRegSuccessNotice] = useState('');
 
   // Teacher states
   const [teacherUsername, setTeacherUsername] = useState('teacher');
   const [teacherPin, setTeacherPin] = useState('1234');
   const [teacherError, setTeacherError] = useState('');
 
-  const handleStudentSubmit = (e: React.FormEvent) => {
+  // Handle Student Login
+  const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !classroom.trim() || !username.trim() || !password.trim()) {
-      alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
+    setLoginError('');
+
+    const res = await authenticateStudent(loginUsername, loginPassword);
+    if (!res.success || !res.account) {
+      setLoginError(res.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       return;
     }
 
-    const trimmedUser = username.trim().toLowerCase();
-    const trimmedName = fullName.trim();
-    const trimmedClass = classroom.trim();
+    const acc = res.account;
     const existingProjects = getStoredProjects();
-
-    // Find student's own project by studentId/username
-    const myProject = existingProjects.find(
-      (p) => p.studentId.toLowerCase() === trimmedUser
+    let targetProject = existingProjects.find(
+      (p) => p.studentId.toLowerCase() === acc.username.toLowerCase()
     );
 
-    let targetProject: Project;
-
-    if (myProject) {
-      targetProject = myProject;
-    } else {
-      // Default to Scenario 1 if first time, student can also explore all 5 scenarios inside
+    if (!targetProject) {
+      // Create project automatically for new user
       targetProject = createNewProject(
         1,
-        trimmedUser,
-        trimmedName,
-        `ห้อง ${trimmedClass} - ${trimmedName}`
+        acc.username,
+        acc.fullName,
+        `ห้อง ${acc.classroom} - ${acc.fullName}`
       );
     }
 
@@ -64,13 +75,71 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       id: targetProject.studentId,
       name: targetProject.studentName,
       role: 'student',
-      email: `${trimmedUser}@student.local`,
+      email: `${acc.username}@student.local`,
       groupName: targetProject.groupName
     };
 
     onLoginSuccess(studentUser, targetProject);
   };
 
+  // Handle Student Register
+  const handleStudentRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegError('');
+    setRegSuccessNotice('');
+
+    if (regPassword !== regConfirmPassword) {
+      setRegError('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน');
+      return;
+    }
+
+    if (regPassword.length < 3) {
+      setRegError('รหัสผ่านต้องมีความยาวอย่างน้อย 3 ตัวอักษร');
+      return;
+    }
+
+    const res = await registerStudentAccount(
+      regUsername,
+      regPassword,
+      regFullName,
+      regClassroom
+    );
+
+    if (!res.success) {
+      setRegError(res.message || 'การสมัครสมาชิกล้มเหลว');
+      return;
+    }
+
+    // Auto login after registration
+    setRegSuccessNotice('สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบ...');
+    setTimeout(() => {
+      const existingProjects = getStoredProjects();
+      let targetProject = existingProjects.find(
+        (p) => p.studentId.toLowerCase() === regUsername.trim().toLowerCase()
+      );
+
+      if (!targetProject) {
+        targetProject = createNewProject(
+          1,
+          regUsername.trim().toLowerCase(),
+          regFullName.trim(),
+          `ห้อง ${regClassroom.trim()} - ${regFullName.trim()}`
+        );
+      }
+
+      const studentUser: User = {
+        id: targetProject.studentId,
+        name: targetProject.studentName,
+        role: 'student',
+        email: `${regUsername.trim()}@student.local`,
+        groupName: targetProject.groupName
+      };
+
+      onLoginSuccess(studentUser, targetProject);
+    }, 1000);
+  };
+
+  // Handle Teacher Login
   const handleTeacherLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (
@@ -106,9 +175,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </div>
       </div>
 
-      {/* Main Login Card */}
+      {/* Main Auth Card */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl backdrop-blur-md">
-        {/* Role Switching Tabs */}
+        {/* Main Role Switching Tabs */}
         <div className="grid grid-cols-2 border-b border-slate-800 text-sm font-semibold">
           <button
             onClick={() => setRoleTab('student')}
@@ -119,7 +188,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             }`}
           >
             <GraduationCap className="w-4 h-4" />
-            <span>เข้าสู่ระบบนักเรียน</span>
+            <span>ระบบนักเรียน</span>
           </button>
 
           <button
@@ -136,73 +205,211 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </div>
 
         <div className="p-6 sm:p-8">
-          {/* STUDENT FORM: ชื่อจริง-นามสกุล, ห้องเรียน, ชื่อผู้ใช้, รหัสผ่าน */}
+          {/* STUDENT SECTION */}
           {roleTab === 'student' && (
-            <form onSubmit={handleStudentSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  ชื่อจริง - นามสกุล *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="เช่น นายชานนท์ มั่นคง"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                />
+            <div className="space-y-5">
+              {/* Login vs Register Sub-Tabs */}
+              <div className="grid grid-cols-2 p-1 bg-slate-800 rounded-xl border border-slate-700/80 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStudentMode('login');
+                    setLoginError('');
+                  }}
+                  className={`py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                    studentMode === 'login'
+                      ? 'bg-blue-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>เข้าสู่ระบบ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStudentMode('register');
+                    setRegError('');
+                  }}
+                  className={`py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                    studentMode === 'register'
+                      ? 'bg-blue-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>สมัครสมาชิกใหม่</span>
+                </button>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  ห้องเรียน *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={classroom}
-                  onChange={(e) => setClassroom(e.target.value)}
-                  placeholder="เช่น ม.4/1 หรือ ปวช.2 คอมพิวเตอร์"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                />
-              </div>
+              {/* 1) STUDENT LOGIN FORM */}
+              {studentMode === 'login' && (
+                <form onSubmit={handleStudentLogin} className="space-y-4">
+                  {loginError && (
+                    <div className="bg-rose-500/20 border border-rose-500/40 text-rose-300 p-3 rounded-xl text-xs flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{loginError}</span>
+                    </div>
+                  )}
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  ชื่อผู้ใช้ (Username) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="เช่น std6701 หรือ chanon_m"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      ชื่อผู้ใช้ (Username)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={loginUsername}
+                      onChange={(e) => setLoginUsername(e.target.value)}
+                      placeholder="กรอกชื่อผู้ใช้ที่สมัครไว้"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  รหัสผ่าน (Password) *
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      รหัสผ่าน (Password)
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
 
-              <button
-                type="submit"
-                className="w-full mt-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/30 transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>เข้าสู่ระบบเพื่อทำภารกิจ</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
+                  <button
+                    type="submit"
+                    className="w-full mt-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/30 transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>เข้าสู่ระบบ</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <div className="text-center pt-2">
+                    <span className="text-xs text-slate-400">ยังไม่มีบัญชีนักเรียน? </span>
+                    <button
+                      type="button"
+                      onClick={() => setStudentMode('register')}
+                      className="text-xs text-blue-400 hover:text-blue-300 font-semibold underline"
+                    >
+                      กดสมัครสมาชิกที่นี่
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* 2) STUDENT REGISTER FORM: ชื่อจริง-นามสกุล, ห้องเรียน, ชื่อผู้ใช้, รหัสผ่าน */}
+              {studentMode === 'register' && (
+                <form onSubmit={handleStudentRegister} className="space-y-3.5">
+                  {regError && (
+                    <div className="bg-rose-500/20 border border-rose-500/40 text-rose-300 p-2.5 rounded-xl text-xs flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{regError}</span>
+                    </div>
+                  )}
+
+                  {regSuccessNotice && (
+                    <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 p-2.5 rounded-xl text-xs flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>{regSuccessNotice}</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      ชื่อจริง - นามสกุล *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={regFullName}
+                      onChange={(e) => setRegFullName(e.target.value)}
+                      placeholder="เช่น นายชานนท์ มั่นคง"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      ห้องเรียน / ชั้นปี *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={regClassroom}
+                      onChange={(e) => setRegClassroom(e.target.value)}
+                      placeholder="เช่น ม.4/1 หรือ ปวช.2 แผนกคอมพิวเตอร์"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      ตั้งชื่อผู้ใช้ (Username) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={regUsername}
+                      onChange={(e) => setRegUsername(e.target.value)}
+                      placeholder="ภาษาอังกฤษหรือตัวเลข เช่น std6701"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        รหัสผ่าน *
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        ยืนยันรหัสผ่าน *
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={regConfirmPassword}
+                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-blue-600/30 transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>ยืนยันสมัครสมาชิกและเข้าสู่ระบบ</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <div className="text-center pt-1">
+                    <span className="text-xs text-slate-400">มีบัญชีอยู่แล้ว? </span>
+                    <button
+                      type="button"
+                      onClick={() => setStudentMode('login')}
+                      className="text-xs text-blue-400 hover:text-blue-300 font-semibold underline"
+                    >
+                      เข้าสู่ระบบที่นี่
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           )}
 
           {/* TEACHER FORM */}
