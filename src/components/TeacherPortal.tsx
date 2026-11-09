@@ -31,11 +31,13 @@ import {
 interface TeacherPortalProps {
   onSelectProjectForView: (project: Project) => void;
   onTeacherProfileUpdated?: (updatedTeacher: TeacherProfile) => void;
+  teacherProfile?: TeacherProfile;
 }
 
 export const TeacherPortal: React.FC<TeacherPortalProps> = ({
   onSelectProjectForView,
-  onTeacherProfileUpdated
+  onTeacherProfileUpdated,
+  teacherProfile: propTeacherProfile
 }) => {
   const [projects, setProjects] = useState<Project[]>(getStoredProjects());
   const [selectedProjectId, setSelectedProjectId] = useState<string>(() => {
@@ -51,7 +53,10 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
   // Modals
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
-  const [teacherProfile, setTeacherProfile] = useState<TeacherProfile>(getTeacherProfile());
+  const [localTeacherProfile, setLocalTeacherProfile] = useState<TeacherProfile>(getTeacherProfile());
+
+  // Active teacher profile (prop has precedence, fallback to local)
+  const teacherProfile = propTeacherProfile || localTeacherProfile;
 
   // Review & Grading Inputs
   const [reviewScore, setReviewScore] = useState<number>(10);
@@ -787,7 +792,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         onProfileUpdated={(updated) => {
-          setTeacherProfile(updated);
+          setLocalTeacherProfile(updated);
           if (onTeacherProfileUpdated) {
             onTeacherProfileUpdated(updated);
           }

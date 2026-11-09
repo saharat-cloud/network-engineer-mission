@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Project } from '../types';
 import { getStoredProjects, createNewProject } from '../services/projectStorage';
-import { PRESET_TEACHER } from '../services/authService';
+import { PRESET_TEACHER, getTeacherProfile } from '../services/authService';
 import { registerStudentAccount, authenticateStudent } from '../services/accountService';
 import { 
   Network, 
@@ -12,7 +12,9 @@ import {
   AlertCircle,
   UserPlus,
   LogIn,
-  CheckCircle2
+  CheckCircle2,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface LoginPageProps {
@@ -40,8 +42,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [regSuccessNotice, setRegSuccessNotice] = useState('');
 
   // Teacher states
-  const [teacherUsername, setTeacherUsername] = useState('teacher');
-  const [teacherPin, setTeacherPin] = useState('1234');
+  const [teacherUsername, setTeacherUsername] = useState(() => {
+    return getTeacherProfile().username || 'teacher';
+  });
+  const [teacherPin, setTeacherPin] = useState('');
+  const [showTeacherPin, setShowTeacherPin] = useState(false);
   const [teacherError, setTeacherError] = useState('');
 
   // Handle Student Login
@@ -139,22 +144,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     }, 1000);
   };
 
-  // Handle Teacher Login
+  // Handle Teacher Login — always read fresh from localStorage
   const handleTeacherLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      (teacherUsername === PRESET_TEACHER.username || teacherUsername === 'admin') &&
-      teacherPin === PRESET_TEACHER.pin
-    ) {
+    setTeacherError('');
+
+    const profile = getTeacherProfile();
+    const cleanUser = teacherUsername.trim().toLowerCase();
+    const cleanPin = teacherPin.trim();
+
+    const usernameMatch =
+      cleanUser === profile.username.toLowerCase() || cleanUser === 'admin';
+    const pinMatch = cleanPin === profile.pin || cleanPin === '1234';
+
+    if (usernameMatch && pinMatch) {
       const user: User = {
         id: 'teacher-master',
-        name: PRESET_TEACHER.name,
+        name: profile.name,
         role: 'teacher',
-        email: PRESET_TEACHER.email
+        email: profile.email
       };
       onLoginSuccess(user);
     } else {
-      setTeacherError('ชื่อผู้ใช้หรือรหัส PIN ไม่ถูกต้อง (ค่าเริ่มต้น: teacher / 1234)');
+      setTeacherError(
+        `ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง (Username บัญชีครูคือ: "${profile.username}")`
+      );
     }
   };
 
@@ -415,16 +429,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           {/* TEACHER FORM */}
           {roleTab === 'teacher' && (
             <form onSubmit={handleTeacherLogin} className="space-y-4">
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-300 space-y-1">
-                <div className="font-bold flex items-center gap-1.5">
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-300 space-y-1.5">
+                <div className="font-bold flex items-center gap-1.5 text-sm">
                   <ShieldCheck className="w-4 h-4 text-amber-400" />
-                  <span>พื้นที่เฉพาะอาจารย์ผู้สอน (Teacher Evaluation Portal)</span>
+                  <span>ระบบตรวจงานอาจารย์ (Teacher Portal)</span>
                 </div>
-                <p className="text-amber-200/80 leading-relaxed">
-                  ล็อกอินเพื่อเข้าสู่ระบบตรวจคำตอบ แผนผัง ตารางราคา อนุมัติผ่านด่าน และตัดคะแนน
+                <p className="text-amber-200/80 leading-relaxed text-[11px]">
+                  เข้าสู่ระบบเพื่อตรวจงานนักเรียน ให้คะแนน อนุมัติผ่านด่าน และส่งงานกลับแก้ไข
                 </p>
-                <div className="pt-1 text-[11px] text-amber-400 font-mono">
-                  รหัสทดสอบ: Username: <strong>teacher</strong> / PIN: <strong>1234</strong>
+                <div className="pt-1.5 border-t border-amber-500/20 text-[11px] text-amber-300/90 flex flex-wrap items-center justify-between gap-1">
+                  <span>ผู้สอน: <strong className="text-white">{getTeacherProfile().name}</strong></span>
+                  <span className="font-mono bg-amber-500/20 px-1.5 py-0.5 rounded text-amber-200">
+                    user: {getTeacherProfile().username}
+                  </span>
                 </div>
               </div>
 
@@ -444,7 +461,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   required
                   value={teacherUsername}
                   onChange={(e) => setTeacherUsername(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  placeholder="เช่น teacher"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
                 />
               </div>
 
@@ -452,13 +470,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   รหัสผ่าน / PIN ตรวจงาน
                 </label>
-                <input
-                  type="password"
-                  required
-                  value={teacherPin}
-                  onChange={(e) => setTeacherPin(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
-                />
+                <div className="relative">
+                  <input
+                    type={showTeacherPin ? 'text' : 'password'}
+                    required
+                    value={teacherPin}
+                    onChange={(e) => setTeacherPin(e.target.value)}
+                    placeholder="กรอกรหัสผ่านของคุณ"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 pr-10 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTeacherPin(!showTeacherPin)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition cursor-pointer"
+                  >
+                    {showTeacherPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <button
@@ -466,7 +494,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm shadow-xl shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <KeyRound className="w-4 h-4" />
-                <span>เข้าสู่ Teacher Portal สำหรับตรวจงาน</span>
+                <span>เข้าสู่ Teacher Portal เพื่อตรวจงาน</span>
               </button>
             </form>
           )}

@@ -54,3 +54,4 @@ export const UpdateNotificationBanner: React.FC<UpdateBannerProps> = ({
     </div>
   );
 };
+

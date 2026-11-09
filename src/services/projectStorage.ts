@@ -1,6 +1,7 @@
 import { Project } from '../types';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { SCENARIOS, INITIAL_MISSION_DATA } from '../data/constants';
+import { getTeacherProfile } from './authService';
 
 const LOCAL_STORAGE_KEY = 'nem_projects_data_v1';
 const CURRENT_PROJECT_ID_KEY = 'nem_active_project_id';
@@ -176,10 +177,12 @@ export const approveStage = (
   stage: number,
   score: number,
   feedback: string,
-  reviewerName: string = 'อ.กิตติศักดิ์ พูลสวัสดิ์'
+  reviewerName?: string
 ): Project | undefined => {
   const project = getProjectById(projectId);
   if (!project) return undefined;
+
+  const finalReviewerName = reviewerName?.trim() || getTeacherProfile().name || 'อาจารย์ผู้ตรวจ';
 
   project.stageStatuses[stage] = 'COMPLETED';
   project.scores[stage] = score;
@@ -204,7 +207,7 @@ export const approveStage = (
     feedback: feedback || 'ผ่านเกณฑ์เรียบร้อย อนุญาตให้ไปต่อด่านถัดไปได้ครับ',
     score,
     reviewedAt: new Date().toISOString(),
-    reviewedBy: reviewerName
+    reviewedBy: finalReviewerName
   });
 
   updateProject(project);
@@ -215,10 +218,12 @@ export const requestRevisionStage = (
   projectId: string,
   stage: number,
   feedback: string,
-  reviewerName: string = 'อ.กิตติศักดิ์ พูลสวัสดิ์'
+  reviewerName?: string
 ): Project | undefined => {
   const project = getProjectById(projectId);
   if (!project) return undefined;
+
+  const finalReviewerName = reviewerName?.trim() || getTeacherProfile().name || 'อาจารย์ผู้ตรวจ';
 
   project.stageStatuses[stage] = 'REVISION';
 
@@ -231,7 +236,7 @@ export const requestRevisionStage = (
     feedback: feedback || 'กรุณาแก้ไขรายละเอียดเพิ่มเติมตามที่ระบุ แล้วกดส่งงานอีกครั้ง',
     score: 0,
     reviewedAt: new Date().toISOString(),
-    reviewedBy: reviewerName
+    reviewedBy: finalReviewerName
   });
 
   updateProject(project);

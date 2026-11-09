@@ -28,9 +28,21 @@ import { getSession, setSession, clearSession, getTeacherProfile, TeacherProfile
 import { SCENARIOS } from './data/constants';
 
 export const App: React.FC = () => {
+  // Teacher profile state for instantaneous reactivity
+  const [currentTeacher, setCurrentTeacher] = useState<TeacherProfile>(getTeacherProfile);
+
   // Authentication State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    return getSession().user;
+    const sess = getSession();
+    if (sess.user && sess.user.role === 'teacher') {
+      const tp = getTeacherProfile();
+      return {
+        ...sess.user,
+        name: tp.name || sess.user.name,
+        email: tp.email || sess.user.email
+      };
+    }
+    return sess.user;
   });
 
   const [activeProject, setActiveProject] = useState<Project | null>(() => {
@@ -70,7 +82,7 @@ export const App: React.FC = () => {
 
     window.addEventListener('storage', handleStorageChange);
 
-    // Also poll cloud/local state every 10 seconds to check for new approvals or submissions
+    // Also poll cloud/local state every 8 seconds to check for new approvals or submissions
     const interval = setInterval(async () => {
       if (activeProject && currentUser?.role === 'student') {
         const fresh = getProjectById(activeProject.id);
@@ -82,6 +94,18 @@ export const App: React.FC = () => {
           } else {
             setUpdateBannerMessage('ข้อมูลภารกิจได้รับการอัปเดต');
           }
+        }
+      } else if (currentUser?.role === 'teacher') {
+        const stored = getStoredProjects();
+        const pendingCount = stored.filter(p => Object.values(p.stageStatuses).some(s => s === 'SUBMITTED')).length;
+        const lastCountStr = sessionStorage.getItem('nem_last_pending_count');
+        const lastCount = lastCountStr !== null ? Number(lastCountStr) : pendingCount;
+        if (pendingCount > lastCount) {
+          sessionStorage.setItem('nem_last_pending_count', String(pendingCount));
+          setShowUpdateBanner(true);
+          setUpdateBannerMessage(`มีนักเรียนส่งงานเข้ามาใหม่รอตรวจ (${pendingCount} รายการ)`);
+        } else if (pendingCount !== lastCount) {
+          sessionStorage.setItem('nem_last_pending_count', String(pendingCount));
         }
       }
     }, 8000);
@@ -116,6 +140,7 @@ export const App: React.FC = () => {
   };
 
   const handleTeacherProfileUpdated = (updatedTeacher: TeacherProfile) => {
+    setCurrentTeacher(updatedTeacher);
     if (currentUser && currentUser.role === 'teacher') {
       const updatedUser: User = {
         ...currentUser,
@@ -220,6 +245,7 @@ export const App: React.FC = () => {
         {/* TEACHER EXCLUSIVE VIEW */}
         {currentUser.role === 'teacher' ? (
           <TeacherPortal
+            teacherProfile={currentTeacher}
             onSelectProjectForView={(proj) => {
               setActiveProject(proj);
               setActiveProjectId(proj.id);
