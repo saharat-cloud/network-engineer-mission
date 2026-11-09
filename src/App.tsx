@@ -13,6 +13,7 @@ import { Stage05Planning } from './components/Stage05Planning';
 import { Stage06Config } from './components/Stage06Config';
 import { Stage07Final } from './components/Stage07Final';
 import { TeacherPortal } from './components/TeacherPortal';
+import { ProfileModal } from './components/ProfileModal';
 import { 
   getStoredProjects, 
   getProjectById, 
@@ -40,6 +41,7 @@ export const App: React.FC = () => {
   });
 
   const [currentView, setCurrentView] = useState<string>('home');
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Keep session in sync
   useEffect(() => {
@@ -70,7 +72,7 @@ export const App: React.FC = () => {
 
   const handleSelectScenario = (sc: Scenario) => {
     if (currentUser?.role === 'teacher') {
-      alert('คุณกำลังอยู่ในบทบาทครูผู้สอน ระบบนักเรียนจะแยกต่างหาก');
+      alert('คุณกำลังอยู่ในบทบาทครูผู้สอน');
       return;
     }
 
@@ -134,14 +136,13 @@ export const App: React.FC = () => {
         activeProject={currentUser.role === 'student' ? activeProject : null}
         currentView={currentView}
         onNavigate={(view) => {
-          // Guard: Student cannot enter teacher portal
           if (view === 'teacher' && currentUser.role !== 'teacher') {
-            alert('พื้นที่นี้สำหรับอาจารย์ผู้ตรวจงานเท่านั้น กรุณาออกจากระบบและเข้าสู่ระบบด้วยสิทธิ์ครู');
             return;
           }
           setCurrentView(view);
         }}
         onSwitchUser={handleLogout}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
         onSelectProject={(proj) => {
           setActiveProject(proj);
           setActiveProjectId(proj.id);
@@ -266,10 +267,21 @@ export const App: React.FC = () => {
             <span>• ระบบแพลตฟอร์มฝึกวิเคราะห์ ออกแบบ และติดตั้งระบบเครือข่ายคอมพิวเตอร์</span>
           </div>
           <div className="text-slate-500">
-            {currentUser.role === 'teacher' ? '🔒 กำลังทำงานในโหมด: อาจารย์ผู้ตรวจงาน' : `👤 กำลังทำงานในโหมด: นักเรียน (${currentUser.groupName})`}
+            {currentUser.role === 'teacher' ? '🔒 กำลังทำงานในโหมด: อาจารย์ผู้ตรวจงาน' : `👤 กำลังทำงานในโหมด: นักเรียน (${currentUser.nickname || currentUser.name})`}
           </div>
         </div>
       </footer>
+
+      {/* Profile Settings Modal */}
+      {currentUser.role === 'student' && (
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          currentUser={currentUser}
+          activeProject={activeProject}
+          onUpdateUser={(updated) => setCurrentUser(updated)}
+        />
+      )}
     </div>
   );
 };

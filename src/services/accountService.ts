@@ -2,8 +2,11 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 export interface StudentAccount {
   username: string;
-  passwordHash: string; // Plain/hashed for student classroom context
+  passwordHash: string;
   fullName: string;
+  nickname?: string;
+  alias?: string;
+  email?: string;
   classroom: string;
   createdAt: string;
 }
@@ -31,6 +34,44 @@ export const saveAccountLocally = (account: StudentAccount): void => {
   localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
 };
 
+export const updateStudentProfile = async (
+  username: string,
+  updatedData: Partial<StudentAccount>
+): Promise<StudentAccount | null> => {
+  const accounts = getStoredAccounts();
+  const idx = accounts.findIndex((a) => a.username.toLowerCase() === username.toLowerCase());
+  if (idx === -1) return null;
+
+  const current = accounts[idx];
+  const updated: StudentAccount = {
+    ...current,
+    ...updatedData,
+    username: current.username // prevent changing username
+  };
+
+  accounts[idx] = updated;
+  localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+
+  // Sync to Supabase if available
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase.from('student_accounts').upsert({
+        username: updated.username,
+        password: updated.passwordHash,
+        full_name: updated.fullName,
+        classroom: updated.classroom,
+        nickname: updated.nickname || '',
+        alias: updated.alias || '',
+        email: updated.email || ''
+      });
+    } catch (e) {
+      console.warn('Could not update profile to Supabase', e);
+    }
+  }
+
+  return updated;
+};
+
 // Register Account
 export const registerStudentAccount = async (
   username: string,
@@ -50,12 +91,12 @@ export const registerStudentAccount = async (
     passwordHash: password.trim(),
     fullName: fullName.trim(),
     classroom: classroom.trim(),
+    email: `${cleanUsername}@school.ac.th`,
     createdAt: new Date().toISOString()
   };
 
   saveAccountLocally(newAccount);
 
-  // Sync to Supabase if configured
   if (isSupabaseConfigured && supabase) {
     try {
       await supabase.from('student_accounts').upsert({
@@ -81,7 +122,6 @@ export const authenticateStudent = async (
   const cleanUsername = username.trim().toLowerCase();
   const cleanPassword = password.trim();
 
-  // Try cloud first if available
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
@@ -97,17 +137,19 @@ export const authenticateStudent = async (
           passwordHash: data.password,
           fullName: data.full_name,
           classroom: data.classroom,
+          nickname: data.nickname || '',
+          alias: data.alias || '',
+          email: data.email || `${data.username}@school.ac.th`,
           createdAt: data.created_at
         };
         saveAccountLocally(cloudAcc);
         return { success: true, account: cloudAcc };
       }
     } catch (e) {
-      console.warn('Cloud login check failed, falling back to local');
+      console.warn('Cloud login check failed, fallback to local');
     }
   }
 
-  // Fallback to local
   const accounts = getStoredAccounts();
   const found = accounts.find(
     (a) => a.username.toLowerCase() === cleanUsername && a.passwordHash === cleanPassword

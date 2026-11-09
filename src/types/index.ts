@@ -4,6 +4,9 @@ export interface User {
   role: 'student' | 'teacher';
   email: string;
   groupName?: string;
+  nickname?: string;
+  alias?: string;
+  classroom?: string;
 }
 
 export interface Scenario {
@@ -162,6 +165,19 @@ export interface ReviewFeedback {
   score: number;
   reviewedAt: string;
   reviewedBy: string;
+  isRead?: boolean;
+}
+
+export interface NotificationItem {
+  id: string;
+  stage: number;
+  type: 'APPROVED' | 'REVISION' | 'GENERAL';
+  title: string;
+  message: string;
+  score?: number;
+  createdAt: string;
+  isRead: boolean;
+  sender: string;
 }
 
 export interface Project {
@@ -171,13 +187,12 @@ export interface Project {
   studentName: string;
   groupName: string;
   currentStage: number; // 1 - 7
-  stageStatuses: Record<number, MissionStatus>; // { 1: 'IN_PROGRESS', 2: 'LOCKED', ... }
+  stageStatuses: Record<number, MissionStatus>;
   data: MissionData;
   feedbackHistory: Record<number, ReviewFeedback[]>;
-  scores: Record<number, number>; // Stage -> Score
+  scores: Record<number, number>;
   totalScore: number;
   isCompleted: boolean;
   createdAt: string;
   updatedAt: string;
 }
-
