@@ -63,3 +63,4 @@ WITH CHECK (true);
 -- ไปที่ Supabase Dashboard -> Storage -> Create New Bucket:
 -- 1) Bucket Name: mission-evidence
 -- 2) Public Bucket: ON (Checked)
+
