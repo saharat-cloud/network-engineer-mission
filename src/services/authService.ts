@@ -46,15 +46,27 @@ export const getTeacherProfile = (): TeacherProfile => {
   try {
     const raw = localStorage.getItem(TEACHER_PROFILE_KEY);
     if (raw) return JSON.parse(raw);
+    const sess = sessionStorage.getItem(TEACHER_PROFILE_KEY);
+    if (sess) return JSON.parse(sess);
   } catch (e) {
-    console.error(e);
+    console.error('Error reading teacher profile:', e);
   }
   return PRESET_TEACHER;
 };
 
 export const updateTeacherProfile = (profile: Partial<TeacherProfile>): TeacherProfile => {
   const current = getTeacherProfile();
-  const updated = { ...current, ...profile };
+  const updated: TeacherProfile = {
+    ...current,
+    ...profile,
+    pin: profile.pin !== undefined ? String(profile.pin).trim() : current.pin,
+    username: profile.username !== undefined ? String(profile.username).trim() : current.username,
+    name: profile.name !== undefined ? String(profile.name).trim() : current.name
+  };
   localStorage.setItem(TEACHER_PROFILE_KEY, JSON.stringify(updated));
+  try {
+    sessionStorage.setItem(TEACHER_PROFILE_KEY, JSON.stringify(updated));
+  } catch {}
+  window.dispatchEvent(new CustomEvent('teacher_profile_updated', { detail: updated }));
   return updated;
 };

@@ -42,9 +42,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [regSuccessNotice, setRegSuccessNotice] = useState('');
 
   // Teacher states
-  const [teacherUsername, setTeacherUsername] = useState(() => {
-    return getTeacherProfile().username || 'teacher';
-  });
+  const [teacherUsername, setTeacherUsername] = useState('');
   const [teacherPin, setTeacherPin] = useState('');
   const [showTeacherPin, setShowTeacherPin] = useState(false);
   const [teacherError, setTeacherError] = useState('');
@@ -144,7 +142,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     }, 1000);
   };
 
-  // Handle Teacher Login — always read fresh from localStorage
+  // Handle Teacher Login — strictly check against current saved credentials
   const handleTeacherLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setTeacherError('');
@@ -153,9 +151,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     const cleanUser = teacherUsername.trim().toLowerCase();
     const cleanPin = teacherPin.trim();
 
-    const usernameMatch =
-      cleanUser === profile.username.toLowerCase() || cleanUser === 'admin';
-    const pinMatch = cleanPin === profile.pin || cleanPin === '1234';
+    const usernameMatch = cleanUser === profile.username.trim().toLowerCase();
+    const pinMatch = cleanPin === profile.pin.trim();
 
     if (usernameMatch && pinMatch) {
       const user: User = {
@@ -166,9 +163,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       };
       onLoginSuccess(user);
     } else {
-      setTeacherError(
-        `ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง (Username บัญชีครูคือ: "${profile.username}")`
-      );
+      setTeacherError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
     }
   };
 
@@ -429,24 +424,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           {/* TEACHER FORM */}
           {roleTab === 'teacher' && (
             <form onSubmit={handleTeacherLogin} className="space-y-4">
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-300 space-y-1.5">
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-300 space-y-1">
                 <div className="font-bold flex items-center gap-1.5 text-sm">
                   <ShieldCheck className="w-4 h-4 text-amber-400" />
                   <span>ระบบตรวจงานอาจารย์ (Teacher Portal)</span>
                 </div>
                 <p className="text-amber-200/80 leading-relaxed text-[11px]">
-                  เข้าสู่ระบบเพื่อตรวจงานนักเรียน ให้คะแนน อนุมัติผ่านด่าน และส่งงานกลับแก้ไข
+                  เข้าสู่ระบบเพื่อตรวจงานนักเรียน ให้คะแนน อนุมัติผ่านด่าน และจัดการชั้นเรียน
                 </p>
-                <div className="pt-1.5 border-t border-amber-500/20 text-[11px] text-amber-300/90 flex flex-wrap items-center justify-between gap-1">
-                  <span>ผู้สอน: <strong className="text-white">{getTeacherProfile().name}</strong></span>
-                  <span className="font-mono bg-amber-500/20 px-1.5 py-0.5 rounded text-amber-200">
-                    user: {getTeacherProfile().username}
-                  </span>
-                </div>
               </div>
 
               {teacherError && (
-                <div className="bg-rose-500/20 border border-rose-500/40 text-rose-300 p-3 rounded-xl text-xs flex items-center gap-2">
+                <div className="bg-rose-500/20 border border-rose-500/40 text-rose-300 p-3 rounded-xl text-xs flex items-center gap-2 animate-fadeIn">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{teacherError}</span>
                 </div>
@@ -461,8 +450,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   required
                   value={teacherUsername}
                   onChange={(e) => setTeacherUsername(e.target.value)}
-                  placeholder="เช่น teacher"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
+                  placeholder="กรอกชื่อผู้ใช้งานอาจารย์"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500 font-mono"
                 />
               </div>
 
@@ -476,8 +465,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     required
                     value={teacherPin}
                     onChange={(e) => setTeacherPin(e.target.value)}
-                    placeholder="กรอกรหัสผ่านของคุณ"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 pr-10 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
+                    placeholder="กรอกรหัสผ่าน"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 pr-10 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500 font-mono"
                   />
                   <button
                     type="button"

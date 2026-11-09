@@ -80,7 +80,17 @@ export const App: React.FC = () => {
       }
     };
 
+    const handleTeacherCustom = (e: any) => {
+      if (e.detail) {
+        setCurrentTeacher(e.detail);
+        if (currentUser?.role === 'teacher') {
+          setCurrentUser(prev => prev ? { ...prev, name: e.detail.name, email: e.detail.email } : prev);
+        }
+      }
+    };
+
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('teacher_profile_updated', handleTeacherCustom);
 
     // Also poll cloud/local state every 8 seconds to check for new approvals or submissions
     const interval = setInterval(async () => {
@@ -112,6 +122,7 @@ export const App: React.FC = () => {
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('teacher_profile_updated', handleTeacherCustom);
       clearInterval(interval);
     };
   }, [activeProject, currentUser]);

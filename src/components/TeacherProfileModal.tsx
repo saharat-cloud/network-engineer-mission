@@ -65,7 +65,7 @@ export const TeacherProfileModal: React.FC<TeacherProfileModalProps> = ({
     setTimeout(() => {
       setSavedSuccess(false);
       onClose();
-    }, 1200);
+    }, 1600);
   };
 
   return (
@@ -95,7 +95,7 @@ export const TeacherProfileModal: React.FC<TeacherProfileModalProps> = ({
           {savedSuccess && (
             <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>บันทึกข้อมูลสำเร็จ! ชื่อและรหัสผ่านได้รับการอัปเดทแล้ว</span>
+              <span>บันทึกข้อมูลสำเร็จ! อัปเดตรหัสผ่านใหม่เป็น &quot;<strong>{pin}</strong>&quot; เรียบร้อยแล้ว</span>
             </div>
           )}
 
