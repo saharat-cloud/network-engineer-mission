@@ -10,10 +10,7 @@ import {
   KeyRound, 
   ArrowRight, 
   Sparkles, 
-  FolderPlus,
-  Lock,
-  Layers,
-  CheckCircle2,
+  UserCheck,
   AlertCircle
 } from 'lucide-react';
 
@@ -24,58 +21,58 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [roleTab, setRoleTab] = useState<'student' | 'teacher'>('student');
 
-  // Student states
-  const [studentMode, setStudentMode] = useState<'existing' | 'new'>('existing');
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [newStudentName, setNewStudentName] = useState('');
-  const [newStudentId, setNewStudentId] = useState('');
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newScenarioId, setNewScenarioId] = useState<number>(1);
+  // Individual Student form states
+  const [studentId, setStudentId] = useState('');
+  const [studentName, setStudentName] = useState('');
+  const [teamName, setTeamName] = useState('');
+  const [scenarioId, setScenarioId] = useState<number>(1);
 
   // Teacher states
   const [teacherUsername, setTeacherUsername] = useState('teacher');
   const [teacherPin, setTeacherPin] = useState('1234');
   const [teacherError, setTeacherError] = useState('');
 
-  const existingProjects = getStoredProjects();
-
-  const handleStudentLoginExisting = (e: React.FormEvent) => {
+  // Handle Student Login: Find their own project by studentId, or create new immediately
+  const handleStudentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const proj = existingProjects.find((p) => p.id === selectedProjectId);
-    if (!proj) {
-      alert('กรุณาเลือกโครงการของกลุ่มคุณ');
+    if (!studentId.trim() || !studentName.trim()) {
+      alert('กรุณากรอกรหัสนักเรียนและชื่อ-นามสกุล');
       return;
     }
-    const user: User = {
-      id: proj.studentId,
-      name: proj.studentName,
-      role: 'student',
-      email: `${proj.studentId.toLowerCase()}@school.ac.th`,
-      groupName: proj.groupName
-    };
-    onLoginSuccess(user, proj);
-  };
 
-  const handleStudentCreateAndLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStudentName.trim() || !newStudentId.trim()) {
-      alert('กรุณากรอกชื่อและรหัสนักเรียน');
-      return;
-    }
-    const newProj = createNewProject(
-      newScenarioId,
-      newStudentId.trim(),
-      newStudentName.trim(),
-      newGroupName.trim() || `ทีม ${newStudentName.trim()}`
+    const trimmedId = studentId.trim();
+    const trimmedName = studentName.trim();
+    const existingProjects = getStoredProjects();
+
+    // Check if this student already has their project
+    const myProject = existingProjects.find(
+      (p) => p.studentId.toLowerCase() === trimmedId.toLowerCase()
     );
+
+    let targetProject: Project;
+
+    if (myProject) {
+      // Continue their own project
+      targetProject = myProject;
+    } else {
+      // Create their brand new project
+      targetProject = createNewProject(
+        scenarioId,
+        trimmedId,
+        trimmedName,
+        teamName.trim() || `ทีม ${trimmedName}`
+      );
+    }
+
     const user: User = {
-      id: newProj.studentId,
-      name: newProj.studentName,
+      id: targetProject.studentId,
+      name: targetProject.studentName,
       role: 'student',
-      email: `${newProj.studentId.toLowerCase()}@school.ac.th`,
-      groupName: newProj.groupName
+      email: `${targetProject.studentId.toLowerCase()}@school.ac.th`,
+      groupName: targetProject.groupName
     };
-    onLoginSuccess(user, newProj);
+
+    onLoginSuccess(user, targetProject);
   };
 
   const handleTeacherLogin = (e: React.FormEvent) => {
@@ -92,7 +89,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       };
       onLoginSuccess(user);
     } else {
-      setTeacherError('ชื่อผู้ใช้หรือรหัสผ่าน PIN ไม่ถูกต้อง (ทดลองใช้: teacher / 1234)');
+      setTeacherError('ชื่อผู้ใช้หรือรหัส PIN ไม่ถูกต้อง (ค่าเริ่มต้น: teacher / 1234)');
     }
   };
 
@@ -114,7 +111,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       </div>
 
       {/* Main Login Card */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl backdrop-blur-md">
+      <div className="bg-slate-900/90 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl backdrop-blur-md">
         {/* Role Switching Tabs */}
         <div className="grid grid-cols-2 border-b border-slate-800 text-sm font-semibold">
           <button
@@ -143,158 +140,83 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </div>
 
         <div className="p-6 sm:p-8">
-          {/* STUDENT LOGIN FORM */}
+          {/* STUDENT LOGIN FORM (Single-user direct access) */}
           {roleTab === 'student' && (
-            <div className="space-y-6">
-              <div className="flex rounded-xl bg-slate-800/90 p-1 border border-slate-700/80 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setStudentMode('existing')}
-                  className={`flex-1 py-2 rounded-lg font-medium transition ${
-                    studentMode === 'existing'
-                      ? 'bg-blue-600 text-white shadow'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  เลือกกลุ่มเดิมเพื่อทำต่อ ({existingProjects.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStudentMode('new')}
-                  className={`flex-1 py-2 rounded-lg font-medium transition ${
-                    studentMode === 'new'
-                      ? 'bg-blue-600 text-white shadow'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  + สร้างกลุ่ม/โครงการใหม่
-                </button>
+            <form onSubmit={handleStudentSubmit} className="space-y-4">
+              <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-3.5 text-xs text-blue-300">
+                <span className="font-bold text-white block mb-0.5">
+                  👤 เข้าสู่ระบบทำภารกิจส่วนตัว:
+                </span>
+                กรอกรหัสนักเรียนและชื่อของคุณ หากเคยมีโปรเจกต์เดิมระบบจะเปิดงานของตนเองให้อัตโนมัติ หากเป็นครั้งแรกระบบจะสร้างโครงการใหม่ให้ทันที
               </div>
 
-              {studentMode === 'existing' ? (
-                <form onSubmit={handleStudentLoginExisting} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      เลือกชื่อกลุ่ม หรือโครงการที่กำลังทำอยู่:
-                    </label>
-                    {existingProjects.length > 0 ? (
-                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                        {existingProjects.map((p) => {
-                          const isSel = selectedProjectId === p.id;
-                          const completed = Object.values(p.stageStatuses).filter((s) => s === 'COMPLETED').length;
-                          return (
-                            <div
-                              key={p.id}
-                              onClick={() => setSelectedProjectId(p.id)}
-                              className={`p-3 rounded-xl border cursor-pointer transition text-xs ${
-                                isSel
-                                  ? 'bg-blue-600/20 border-blue-500 text-white ring-1 ring-blue-500'
-                                  : 'bg-slate-800/70 border-slate-700 text-slate-300 hover:bg-slate-750'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-white text-sm">{p.groupName}</span>
-                                <span className="text-[11px] bg-slate-900/80 px-2 py-0.5 rounded text-blue-300 font-mono">
-                                  โจทย์ #{p.scenarioId}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between mt-1 text-slate-400 text-[11px]">
-                                <span>หัวหน้า: {p.studentName} ({p.studentId})</span>
-                                <span className="text-emerald-400 font-semibold font-mono">
-                                  {completed}/7 ด่าน • {p.totalScore} คะแนน
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="p-6 text-center text-xs text-slate-400 bg-slate-800/40 rounded-xl border border-slate-700">
-                        ยังไม่มีโครงการในระบบ กรุณากดแถบ "สร้างกลุ่ม/โครงการใหม่" ด้านบน
-                      </div>
-                    )}
-                  </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  รหัสนักเรียน / รหัสประจำตัว *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  placeholder="เช่น STD-6701 หรือ รหัสนักศึกษา"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                />
+              </div>
 
-                  <button
-                    type="submit"
-                    disabled={!selectedProjectId}
-                    className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-bold text-sm shadow-lg shadow-blue-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    <span>เข้าสู่หน้าทำภารกิจของกลุ่ม</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleStudentCreateAndLogin} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        ชื่อ-นามสกุล หัวหน้าทีม *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={newStudentName}
-                        onChange={(e) => setNewStudentName(e.target.value)}
-                        placeholder="เช่น นายชานนท์ มั่นคง"
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        รหัสนักศึกษา / รหัสกลุ่ม *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={newStudentId}
-                        onChange={(e) => setNewStudentId(e.target.value)}
-                        placeholder="เช่น STD-6701"
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  ชื่อ-นามสกุล นักเรียน *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  placeholder="เช่น นายชานนท์ มั่นคง"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      ชื่อกลุ่ม / บริษัทรับเหมาไอทีจำลอง
-                    </label>
-                    <input
-                      type="text"
-                      value={newGroupName}
-                      onChange={(e) => setNewGroupName(e.target.value)}
-                      placeholder="เช่น NextGen Network Integration Ltd."
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  ชื่อทีม / บริษัทจำลองของคุณ (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder="เช่น NextGen Network Co., Ltd."
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      เลือกโจทย์ลูกค้าที่ได้รับมอบหมาย *
-                    </label>
-                    <select
-                      value={newScenarioId}
-                      onChange={(e) => setNewScenarioId(Number(e.target.value))}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
-                    >
-                      {SCENARIOS.map((sc) => (
-                        <option key={sc.id} value={sc.id}>
-                          โจทย์ {sc.id}: {sc.title} ({sc.category})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  เลือกโจทย์ลูกค้าที่ได้รับมอบหมาย
+                </label>
+                <select
+                  value={scenarioId}
+                  onChange={(e) => setScenarioId(Number(e.target.value))}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                >
+                  {SCENARIOS.map((sc) => (
+                    <option key={sc.id} value={sc.id}>
+                      โจทย์ {sc.id}: {sc.title} ({sc.category})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                  <button
-                    type="submit"
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 transition flex items-center justify-center gap-2"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>สร้างโครงการและเริ่มภารกิจด่าน 01</span>
-                  </button>
-                </form>
-              )}
-            </div>
+              <button
+                type="submit"
+                className="w-full mt-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/30 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>เข้าสู่พื้นที่ทำภารกิจของฉัน</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
           )}
 
           {/* TEACHER LOGIN FORM */}
@@ -348,7 +270,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm shadow-xl shadow-amber-500/20 transition flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm shadow-xl shadow-amber-500/20 transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <KeyRound className="w-4 h-4" />
                 <span>เข้าสู่ Teacher Portal สำหรับตรวจงาน</span>
@@ -360,4 +282,3 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     </div>
   );
 };
-
