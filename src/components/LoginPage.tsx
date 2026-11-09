@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { User, Project } from '../types';
-import { SCENARIOS } from '../data/constants';
 import { getStoredProjects, createNewProject } from '../services/projectStorage';
 import { PRESET_TEACHER } from '../services/authService';
 import { 
@@ -9,8 +8,6 @@ import {
   ShieldCheck, 
   KeyRound, 
   ArrowRight, 
-  Sparkles, 
-  UserCheck,
   AlertCircle
 } from 'lucide-react';
 
@@ -21,58 +18,57 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [roleTab, setRoleTab] = useState<'student' | 'teacher'>('student');
 
-  // Individual Student form states
-  const [studentId, setStudentId] = useState('');
-  const [studentName, setStudentName] = useState('');
-  const [teamName, setTeamName] = useState('');
-  const [scenarioId, setScenarioId] = useState<number>(1);
+  // Student Form Fields: ชื่อจริง-นามสกุล, ห้องเรียน, ชื่อผู้ใช้, รหัสผ่าน
+  const [fullName, setFullName] = useState('');
+  const [classroom, setClassroom] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
   // Teacher states
   const [teacherUsername, setTeacherUsername] = useState('teacher');
   const [teacherPin, setTeacherPin] = useState('1234');
   const [teacherError, setTeacherError] = useState('');
 
-  // Handle Student Login: Find their own project by studentId, or create new immediately
   const handleStudentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!studentId.trim() || !studentName.trim()) {
-      alert('กรุณากรอกรหัสนักเรียนและชื่อ-นามสกุล');
+    if (!fullName.trim() || !classroom.trim() || !username.trim() || !password.trim()) {
+      alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
       return;
     }
 
-    const trimmedId = studentId.trim();
-    const trimmedName = studentName.trim();
+    const trimmedUser = username.trim().toLowerCase();
+    const trimmedName = fullName.trim();
+    const trimmedClass = classroom.trim();
     const existingProjects = getStoredProjects();
 
-    // Check if this student already has their project
+    // Find student's own project by studentId/username
     const myProject = existingProjects.find(
-      (p) => p.studentId.toLowerCase() === trimmedId.toLowerCase()
+      (p) => p.studentId.toLowerCase() === trimmedUser
     );
 
     let targetProject: Project;
 
     if (myProject) {
-      // Continue their own project
       targetProject = myProject;
     } else {
-      // Create their brand new project
+      // Default to Scenario 1 if first time, student can also explore all 5 scenarios inside
       targetProject = createNewProject(
-        scenarioId,
-        trimmedId,
+        1,
+        trimmedUser,
         trimmedName,
-        teamName.trim() || `ทีม ${trimmedName}`
+        `ห้อง ${trimmedClass} - ${trimmedName}`
       );
     }
 
-    const user: User = {
+    const studentUser: User = {
       id: targetProject.studentId,
       name: targetProject.studentName,
       role: 'student',
-      email: `${targetProject.studentId.toLowerCase()}@school.ac.th`,
+      email: `${trimmedUser}@student.local`,
       groupName: targetProject.groupName
     };
 
-    onLoginSuccess(user, targetProject);
+    onLoginSuccess(studentUser, targetProject);
   };
 
   const handleTeacherLogin = (e: React.FormEvent) => {
@@ -111,7 +107,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       </div>
 
       {/* Main Login Card */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl backdrop-blur-md">
+      <div className="bg-slate-900/90 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl backdrop-blur-md">
         {/* Role Switching Tabs */}
         <div className="grid grid-cols-2 border-b border-slate-800 text-sm font-semibold">
           <button
@@ -140,39 +136,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         </div>
 
         <div className="p-6 sm:p-8">
-          {/* STUDENT LOGIN FORM (Single-user direct access) */}
+          {/* STUDENT FORM: ชื่อจริง-นามสกุล, ห้องเรียน, ชื่อผู้ใช้, รหัสผ่าน */}
           {roleTab === 'student' && (
             <form onSubmit={handleStudentSubmit} className="space-y-4">
-              <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-3.5 text-xs text-blue-300">
-                <span className="font-bold text-white block mb-0.5">
-                  👤 เข้าสู่ระบบทำภารกิจส่วนตัว:
-                </span>
-                กรอกรหัสนักเรียนและชื่อของคุณ หากเคยมีโปรเจกต์เดิมระบบจะเปิดงานของตนเองให้อัตโนมัติ หากเป็นครั้งแรกระบบจะสร้างโครงการใหม่ให้ทันที
-              </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  รหัสนักเรียน / รหัสประจำตัว *
+                  ชื่อจริง - นามสกุล *
                 </label>
                 <input
                   type="text"
                   required
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="เช่น STD-6701 หรือ รหัสนักศึกษา"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  ชื่อ-นามสกุล นักเรียน *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={studentName}
-                  onChange={(e) => setStudentName(e.target.value)}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   placeholder="เช่น นายชานนท์ มั่นคง"
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                 />
@@ -180,46 +155,57 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  ชื่อทีม / บริษัทจำลองของคุณ (Optional)
+                  ห้องเรียน *
                 </label>
                 <input
                   type="text"
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                  placeholder="เช่น NextGen Network Co., Ltd."
+                  required
+                  value={classroom}
+                  onChange={(e) => setClassroom(e.target.value)}
+                  placeholder="เช่น ม.4/1 หรือ ปวช.2 คอมพิวเตอร์"
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  เลือกโจทย์ลูกค้าที่ได้รับมอบหมาย
+                  ชื่อผู้ใช้ (Username) *
                 </label>
-                <select
-                  value={scenarioId}
-                  onChange={(e) => setScenarioId(Number(e.target.value))}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
-                >
-                  {SCENARIOS.map((sc) => (
-                    <option key={sc.id} value={sc.id}>
-                      โจทย์ {sc.id}: {sc.title} ({sc.category})
-                    </option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="เช่น std6701 หรือ chanon_m"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  รหัสผ่าน (Password) *
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                />
               </div>
 
               <button
                 type="submit"
                 className="w-full mt-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/30 transition flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>เข้าสู่พื้นที่ทำภารกิจของฉัน</span>
+                <span>เข้าสู่ระบบเพื่อทำภารกิจ</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           )}
 
-          {/* TEACHER LOGIN FORM */}
+          {/* TEACHER FORM */}
           {roleTab === 'teacher' && (
             <form onSubmit={handleTeacherLogin} className="space-y-4">
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-300 space-y-1">
