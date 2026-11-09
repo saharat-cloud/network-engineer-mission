@@ -15,12 +15,14 @@ import { Stage07Final } from './components/Stage07Final';
 import { TeacherPortal } from './components/TeacherPortal';
 import { ProfileModal } from './components/ProfileModal';
 import { TeacherProfileModal } from './components/TeacherProfileModal';
+import { UpdateNotificationBanner } from './components/UpdateNotificationBanner';
 import { 
   getStoredProjects, 
   getProjectById, 
   updateProject, 
   setActiveProjectId, 
-  createNewProject 
+  createNewProject,
+  syncProjectsFromCloud
 } from './services/projectStorage';
 import { getSession, setSession, clearSession, getTeacherProfile, TeacherProfile } from './services/authService';
 import { SCENARIOS } from './data/constants';
@@ -45,6 +47,10 @@ export const App: React.FC = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isTeacherProfileModalOpen, setIsTeacherProfileModalOpen] = useState(false);
 
+  // Bottom Center Update Notification Banner State
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [updateBannerMessage, setUpdateBannerMessage] = useState('มีการอัปเดตข้อมูลหรือผลตรวจใหม่');
+
   // Keep session in sync
   useEffect(() => {
     setSession({
@@ -52,6 +58,43 @@ export const App: React.FC = () => {
       activeProjectId: activeProject?.id || null
     });
   }, [currentUser, activeProject]);
+
+  // Periodic polling & cross-tab storage detection for changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'nem_projects_data_v1' || e.key === 'nem_teacher_profile_v1') {
+        setShowUpdateBanner(true);
+        setUpdateBannerMessage('ตรวจพบการเปลี่ยนแปลงข้อมูลจากเซิร์ฟเวอร์หรือหน้าต่างอื่น');
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also poll cloud/local state every 10 seconds to check for new approvals or submissions
+    const interval = setInterval(async () => {
+      if (activeProject && currentUser?.role === 'student') {
+        const fresh = getProjectById(activeProject.id);
+        if (fresh && fresh.updatedAt !== activeProject.updatedAt) {
+          setShowUpdateBanner(true);
+          const lastFeedback = Object.values(fresh.feedbackHistory).flat().slice(-1)[0];
+          if (lastFeedback) {
+            setUpdateBannerMessage(`อาจารย์ตรวจงานด่าน ${lastFeedback.stage} แล้ว (${lastFeedback.status === 'APPROVED' ? 'ผ่านแล้ว' : 'ส่งกลับแก้ไข'})`);
+          } else {
+            setUpdateBannerMessage('ข้อมูลภารกิจได้รับการอัปเดต');
+          }
+        }
+      }
+    }, 8000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [activeProject, currentUser]);
+
+  const handleRefreshData = () => {
+    window.location.reload();
+  };
 
   const handleLoginSuccess = (user: User, proj?: Project) => {
     setCurrentUser(user);
@@ -315,6 +358,14 @@ export const App: React.FC = () => {
           onProfileUpdated={handleTeacherProfileUpdated}
         />
       )}
+
+      {/* Floating Bottom Center Update Notification Banner */}
+      <UpdateNotificationBanner
+        show={showUpdateBanner}
+        message={updateBannerMessage}
+        onRefresh={handleRefreshData}
+        onDismiss={() => setShowUpdateBanner(false)}
+      />
     </div>
   );
 };
