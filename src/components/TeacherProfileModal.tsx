@@ -159,3 +159,4 @@ export const TeacherProfileModal: React.FC<TeacherProfileModalProps> = ({
     </div>
   );
 };
+
