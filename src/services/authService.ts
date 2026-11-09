@@ -6,6 +6,7 @@ export interface AuthSession {
 }
 
 const SESSION_KEY = 'nem_active_session_auth';
+const TEACHER_PROFILE_KEY = 'nem_teacher_profile_v1';
 
 export const getSession = (): AuthSession => {
   try {
@@ -25,8 +26,15 @@ export const clearSession = (): void => {
   localStorage.removeItem(SESSION_KEY);
 };
 
-// Demo/Default accounts credentials for instant classroom use
-export const PRESET_TEACHER = {
+export interface TeacherProfile {
+  username: string;
+  pin: string;
+  name: string;
+  email: string;
+  schoolName: string;
+}
+
+export const PRESET_TEACHER: TeacherProfile = {
   username: 'teacher',
   pin: '1234',
   name: 'อ.กิตติศักดิ์ พูลสวัสดิ์',
@@ -34,3 +42,19 @@ export const PRESET_TEACHER = {
   schoolName: 'วิทยาลัยเทคนิค / สถานศึกษา'
 };
 
+export const getTeacherProfile = (): TeacherProfile => {
+  try {
+    const raw = localStorage.getItem(TEACHER_PROFILE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error(e);
+  }
+  return PRESET_TEACHER;
+};
+
+export const updateTeacherProfile = (profile: Partial<TeacherProfile>): TeacherProfile => {
+  const current = getTeacherProfile();
+  const updated = { ...current, ...profile };
+  localStorage.setItem(TEACHER_PROFILE_KEY, JSON.stringify(updated));
+  return updated;
+};

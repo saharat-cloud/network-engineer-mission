@@ -95,6 +95,11 @@ export interface TopologyLink {
   label?: string;
 }
 
+export interface ItemEvaluation {
+  status: 'PASS' | 'FAIL' | 'REVISE' | 'PENDING';
+  comment: string;
+}
+
 export interface MissionData {
   // Mission 1: Analysis
   m1_purpose: string;
@@ -107,11 +112,28 @@ export interface MissionData {
   m1_summary: string;
   m1_device_table: Array<{ type: string; count: number; purpose: string }>;
 
+  // Itemized Evaluation by Teacher for Mission 1
+  m1_eval?: {
+    q1?: ItemEvaluation;
+    q2?: ItemEvaluation;
+    q3?: ItemEvaluation;
+    q4?: ItemEvaluation;
+    q5?: ItemEvaluation;
+    q6?: ItemEvaluation;
+    q7?: ItemEvaluation;
+    q8?: ItemEvaluation;
+  };
+
   // Mission 2: Topology
   m2_nodes: TopologyNode[];
   m2_links: TopologyLink[];
   m2_concept_explanation: string;
   m2_uploaded_image_url?: string;
+  m2_eval?: {
+    nodes?: ItemEvaluation;
+    links?: ItemEvaluation;
+    explanation?: ItemEvaluation;
+  };
 
   // Mission 3: Equipment & Budget
   m3_items: EquipmentItem[];
@@ -120,16 +142,29 @@ export interface MissionData {
   m3_extra_cost: number;
   m3_customer_budget: number;
   m3_selection_reason: string;
+  m3_eval?: {
+    bom?: ItemEvaluation;
+    budget?: ItemEvaluation;
+    reason?: ItemEvaluation;
+  };
 
   // Mission 4: Tools & Materials
   m4_tools: ToolItem[];
   m4_notes: string;
   m4_image_url?: string;
+  m4_eval?: {
+    tools?: ItemEvaluation;
+    safety?: ItemEvaluation;
+  };
 
   // Mission 5: Installation Plan
   m5_steps: StepPlanItem[];
   m5_safety_notes: string;
   m5_image_url?: string;
+  m5_eval?: {
+    phases?: ItemEvaluation;
+    safety?: ItemEvaluation;
+  };
 
   // Mission 6: Config & Test
   m6_ip_configs: IPConfigItem[];
@@ -149,6 +184,11 @@ export interface MissionData {
   m6_solutions: string;
   m6_post_resolution: string;
   m6_test_evidence_url?: string;
+  m6_eval?: {
+    ipPlan?: ItemEvaluation;
+    wifiVlan?: ItemEvaluation;
+    testing?: ItemEvaluation;
+  };
 
   // Mission 7: Final
   m7_final_concept_summary: string;
@@ -156,6 +196,9 @@ export interface MissionData {
   m7_maintenance_plan: string;
   m7_future_expansion: string;
   m7_submitted_at?: string;
+  m7_eval?: {
+    handover?: ItemEvaluation;
+  };
 }
 
 export interface ReviewFeedback {
@@ -166,18 +209,6 @@ export interface ReviewFeedback {
   reviewedAt: string;
   reviewedBy: string;
   isRead?: boolean;
-}
-
-export interface NotificationItem {
-  id: string;
-  stage: number;
-  type: 'APPROVED' | 'REVISION' | 'GENERAL';
-  title: string;
-  message: string;
-  score?: number;
-  createdAt: string;
-  isRead: boolean;
-  sender: string;
 }
 
 export interface Project {
