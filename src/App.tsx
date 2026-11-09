@@ -14,6 +14,7 @@ import { Stage06Config } from './components/Stage06Config';
 import { Stage07Final } from './components/Stage07Final';
 import { TeacherPortal } from './components/TeacherPortal';
 import { ProfileModal } from './components/ProfileModal';
+import { TeacherProfileModal } from './components/TeacherProfileModal';
 import { 
   getStoredProjects, 
   getProjectById, 
@@ -21,7 +22,7 @@ import {
   setActiveProjectId, 
   createNewProject 
 } from './services/projectStorage';
-import { getSession, setSession, clearSession } from './services/authService';
+import { getSession, setSession, clearSession, getTeacherProfile, TeacherProfile } from './services/authService';
 import { SCENARIOS } from './data/constants';
 
 export const App: React.FC = () => {
@@ -42,6 +43,7 @@ export const App: React.FC = () => {
 
   const [currentView, setCurrentView] = useState<string>('home');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isTeacherProfileModalOpen, setIsTeacherProfileModalOpen] = useState(false);
 
   // Keep session in sync
   useEffect(() => {
@@ -68,6 +70,21 @@ export const App: React.FC = () => {
     clearSession();
     setCurrentUser(null);
     setCurrentView('home');
+  };
+
+  const handleTeacherProfileUpdated = (updatedTeacher: TeacherProfile) => {
+    if (currentUser && currentUser.role === 'teacher') {
+      const updatedUser: User = {
+        ...currentUser,
+        name: updatedTeacher.name,
+        email: updatedTeacher.email
+      };
+      setCurrentUser(updatedUser);
+      setSession({
+        user: updatedUser,
+        activeProjectId: null
+      });
+    }
   };
 
   const handleSelectScenario = (sc: Scenario) => {
@@ -130,7 +147,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans">
-      {/* Top Header Navigation - Strictly No Sidebar */}
+      {/* Top Header Navigation */}
       <Navbar
         currentUser={currentUser}
         activeProject={currentUser.role === 'student' ? activeProject : null}
@@ -142,7 +159,13 @@ export const App: React.FC = () => {
           setCurrentView(view);
         }}
         onSwitchUser={handleLogout}
-        onOpenProfile={() => setIsProfileModalOpen(true)}
+        onOpenProfile={() => {
+          if (currentUser.role === 'teacher') {
+            setIsTeacherProfileModalOpen(true);
+          } else {
+            setIsProfileModalOpen(true);
+          }
+        }}
         onSelectProject={(proj) => {
           setActiveProject(proj);
           setActiveProjectId(proj.id);
@@ -159,6 +182,7 @@ export const App: React.FC = () => {
               setActiveProjectId(proj.id);
               setCurrentView('map');
             }}
+            onTeacherProfileUpdated={handleTeacherProfileUpdated}
           />
         ) : (
           /* STUDENT EXCLUSIVE VIEWS */
@@ -267,12 +291,12 @@ export const App: React.FC = () => {
             <span>• ระบบแพลตฟอร์มฝึกวิเคราะห์ ออกแบบ และติดตั้งระบบเครือข่ายคอมพิวเตอร์</span>
           </div>
           <div className="text-slate-500">
-            {currentUser.role === 'teacher' ? '🔒 กำลังทำงานในโหมด: อาจารย์ผู้ตรวจงาน' : `👤 กำลังทำงานในโหมด: นักเรียน (${currentUser.nickname || currentUser.name})`}
+            {currentUser.role === 'teacher' ? `🔒 กำลังทำงานในโหมด: อาจารย์ผู้ตรวจ (${currentUser.name})` : `👤 กำลังทำงานในโหมด: นักเรียน (${currentUser.nickname || currentUser.name})`}
           </div>
         </div>
       </footer>
 
-      {/* Profile Settings Modal */}
+      {/* Student Profile Settings Modal */}
       {currentUser.role === 'student' && (
         <ProfileModal
           isOpen={isProfileModalOpen}
@@ -280,6 +304,15 @@ export const App: React.FC = () => {
           currentUser={currentUser}
           activeProject={activeProject}
           onUpdateUser={(updated) => setCurrentUser(updated)}
+        />
+      )}
+
+      {/* Teacher Profile Settings Modal */}
+      {currentUser.role === 'teacher' && (
+        <TeacherProfileModal
+          isOpen={isTeacherProfileModalOpen}
+          onClose={() => setIsTeacherProfileModalOpen(false)}
+          onProfileUpdated={handleTeacherProfileUpdated}
         />
       )}
     </div>

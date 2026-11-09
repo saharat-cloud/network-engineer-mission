@@ -242,12 +242,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             {currentUser && (
               <div className="flex items-center gap-1.5 bg-slate-800/90 border border-slate-700 rounded-xl p-1">
                 <button
-                  onClick={currentUser.role === 'student' ? onOpenProfile : undefined}
-                  className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-slate-700/80 transition text-left"
+                  onClick={onOpenProfile}
+                  className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-slate-700/80 transition text-left cursor-pointer"
                   title="คลิกเพื่อแก้ไขโปรไฟล์"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
-                    {currentUser.nickname ? currentUser.nickname[0] : currentUser.name[0]}
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shadow-sm ${
+                    currentUser.role === 'teacher' ? 'bg-amber-500 text-slate-950' : 'bg-blue-600 text-white'
+                  }`}>
+                    {currentUser.nickname ? currentUser.nickname[0] : (currentUser.name ? currentUser.name[0] : 'U')}
                   </div>
                   <div className="hidden sm:block">
                     <div className="text-xs font-bold text-white flex items-center gap-1">

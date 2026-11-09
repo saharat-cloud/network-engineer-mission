@@ -30,10 +30,12 @@ import {
 
 interface TeacherPortalProps {
   onSelectProjectForView: (project: Project) => void;
+  onTeacherProfileUpdated?: (updatedTeacher: TeacherProfile) => void;
 }
 
 export const TeacherPortal: React.FC<TeacherPortalProps> = ({
-  onSelectProjectForView
+  onSelectProjectForView,
+  onTeacherProfileUpdated
 }) => {
   const [projects, setProjects] = useState<Project[]>(getStoredProjects());
   const [selectedProjectId, setSelectedProjectId] = useState<string>(() => {
@@ -164,21 +166,21 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setIsAddStudentOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-lg shadow-blue-600/20"
+              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-lg shadow-blue-600/20 cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               <span>+ เพิ่มนักเรียน</span>
             </button>
             <button
               onClick={() => setIsProfileModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1.5 transition border border-slate-700"
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1.5 transition border border-slate-700 cursor-pointer"
             >
               <User className="w-4 h-4 text-amber-400" />
               <span>ตั้งค่าโปรไฟล์ครู</span>
             </button>
             <button
               onClick={() => window.print()}
-              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow-lg shadow-amber-500/20"
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition shadow-lg shadow-amber-500/20 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               <span>พิมพ์ใบประเมิน</span>
@@ -203,7 +205,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
             <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl text-xs font-bold">
               <button
                 onClick={() => setProjectFilterTab('pending')}
-                className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition ${
+                className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
                   projectFilterTab === 'pending'
                     ? 'bg-amber-500 text-slate-950 shadow'
                     : 'text-slate-600 hover:text-slate-900'
@@ -214,7 +216,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
               </button>
               <button
                 onClick={() => setProjectFilterTab('all')}
-                className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition ${
+                className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
                   projectFilterTab === 'all'
                     ? 'bg-blue-600 text-white shadow'
                     : 'text-slate-600 hover:text-slate-900'
@@ -237,7 +239,6 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                       key={proj.id}
                       onClick={() => {
                         setSelectedProjectId(proj.id);
-                        // Auto jump to submitted stage if any
                         const pendingStage = Object.entries(proj.stageStatuses).find(([_, st]) => st === 'SUBMITTED');
                         if (pendingStage) {
                           setSelectedStage(Number(pendingStage[0]));
@@ -350,7 +351,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => onSelectProjectForView(activeProject)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 transition"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 transition cursor-pointer"
                       title="เข้าดูแบบหน้าจอนักเรียน"
                     >
                       <Eye className="w-3.5 h-3.5" />
@@ -378,7 +379,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                             setReviewScore(activeProject.scores[num] || MISSIONS[num - 1].points);
                             setReviewComment('');
                           }}
-                          className={`p-2 rounded-xl text-center border transition relative ${
+                          className={`p-2 rounded-xl text-center border transition relative cursor-pointer ${
                             isSel
                               ? 'bg-amber-500 text-slate-950 font-extrabold border-amber-600 shadow-md'
                               : st === 'COMPLETED'
@@ -440,7 +441,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                               key={st}
                               type="button"
                               onClick={() => handleItemEvalChange('q1', st, activeProject.data.m1_eval?.q1?.comment || '')}
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
                                 activeProject.data.m1_eval?.q1?.status === st
                                   ? st === 'PASS' ? 'bg-emerald-600 text-white' : st === 'REVISE' ? 'bg-amber-500 text-slate-950' : 'bg-rose-600 text-white'
                                   : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
@@ -468,7 +469,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                               key={st}
                               type="button"
                               onClick={() => handleItemEvalChange('q2', st, activeProject.data.m1_eval?.q2?.comment || '')}
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
                                 activeProject.data.m1_eval?.q2?.status === st
                                   ? st === 'PASS' ? 'bg-emerald-600 text-white' : st === 'REVISE' ? 'bg-amber-500 text-slate-950' : 'bg-rose-600 text-white'
                                   : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
@@ -497,7 +498,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                               key={st}
                               type="button"
                               onClick={() => handleItemEvalChange('q4', st, activeProject.data.m1_eval?.q4?.comment || '')}
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
                                 activeProject.data.m1_eval?.q4?.status === st
                                   ? st === 'PASS' ? 'bg-emerald-600 text-white' : st === 'REVISE' ? 'bg-amber-500 text-slate-950' : 'bg-rose-600 text-white'
                                   : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
@@ -526,7 +527,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                               key={st}
                               type="button"
                               onClick={() => handleItemEvalChange('q6', st, activeProject.data.m1_eval?.q6?.comment || '')}
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
                                 activeProject.data.m1_eval?.q6?.status === st
                                   ? st === 'PASS' ? 'bg-emerald-600 text-white' : st === 'REVISE' ? 'bg-amber-500 text-slate-950' : 'bg-rose-600 text-white'
                                   : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
@@ -555,7 +556,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                               key={st}
                               type="button"
                               onClick={() => handleItemEvalChange('q8', st, activeProject.data.m1_eval?.q8?.comment || '')}
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
                                 activeProject.data.m1_eval?.q8?.status === st
                                   ? st === 'PASS' ? 'bg-emerald-600 text-white' : st === 'REVISE' ? 'bg-amber-500 text-slate-950' : 'bg-rose-600 text-white'
                                   : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
@@ -785,7 +786,12 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
       <TeacherProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
-        onProfileUpdated={(updated) => setTeacherProfile(updated)}
+        onProfileUpdated={(updated) => {
+          setTeacherProfile(updated);
+          if (onTeacherProfileUpdated) {
+            onTeacherProfileUpdated(updated);
+          }
+        }}
       />
 
       {/* Add Student Modal */}
