@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Project } from '../types';
-import { getStoredProjects, createNewProject } from '../services/projectStorage';
-import { PRESET_TEACHER, getTeacherProfile } from '../services/authService';
+import { getStoredProjects, createNewProject, syncProjectsFromCloud } from '../services/projectStorage';
+import { loadTeacherProfile } from '../services/authService';
 import { registerStudentAccount, authenticateStudent } from '../services/accountService';
 import { 
   Network, 
@@ -59,6 +59,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     }
 
     const acc = res.account;
+    await syncProjectsFromCloud();
     const existingProjects = getStoredProjects();
     let targetProject = existingProjects.find(
       (p) => p.studentId.toLowerCase() === acc.username.toLowerCase()
@@ -143,11 +144,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   };
 
   // Handle Teacher Login — strictly check against current saved credentials
-  const handleTeacherLogin = (e: React.FormEvent) => {
+  const handleTeacherLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setTeacherError('');
 
-    const profile = getTeacherProfile();
+    const profile = await loadTeacherProfile();
     const cleanUser = teacherUsername.trim().toLowerCase();
     const cleanPin = teacherPin.trim();
 

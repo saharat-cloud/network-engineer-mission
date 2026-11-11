@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Project, Scenario, ReviewFeedback, MissionStatus, ItemEvaluation } from '../types';
-import { getStoredProjects, approveStage, requestRevisionStage, updateProject } from '../services/projectStorage';
+import { getStoredProjects, approveStage, requestRevisionStage, updateProject, syncProjectsFromCloud } from '../services/projectStorage';
 import { getTeacherProfile, TeacherProfile } from '../services/authService';
 import { SCENARIOS, MISSIONS } from '../data/constants';
 import { TeacherProfileModal } from './TeacherProfileModal';
@@ -71,6 +71,21 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
   const reloadProjects = () => {
     setProjects(getStoredProjects());
   };
+
+  // Pull latest submissions from cloud on open and every 8 seconds
+  useEffect(() => {
+    let alive = true;
+    const pull = async () => {
+      const list = await syncProjectsFromCloud();
+      if (alive) setProjects(list);
+    };
+    pull();
+    const t = setInterval(pull, 8000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
 
   // Filter projects
   const pendingProjects = projects.filter((p) =>

@@ -1,4 +1,5 @@
-import { User, Project } from '../types';
+import { User } from '../types';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 export interface AuthSession {
   user: User | null;
@@ -45,16 +46,54 @@ export const PRESET_TEACHER: TeacherProfile = {
 export const getTeacherProfile = (): TeacherProfile => {
   try {
     const raw = localStorage.getItem(TEACHER_PROFILE_KEY);
-    if (raw) return JSON.parse(raw);
-    const sess = sessionStorage.getItem(TEACHER_PROFILE_KEY);
-    if (sess) return JSON.parse(sess);
+    if (raw) return { ...PRESET_TEACHER, ...JSON.parse(raw) };
   } catch (e) {
     console.error('Error reading teacher profile:', e);
   }
   return PRESET_TEACHER;
 };
 
-export const updateTeacherProfile = (profile: Partial<TeacherProfile>): TeacherProfile => {
+const saveTeacherProfileLocally = (profile: TeacherProfile): void => {
+  localStorage.setItem(TEACHER_PROFILE_KEY, JSON.stringify(profile));
+  window.dispatchEvent(new CustomEvent('teacher_profile_updated', { detail: profile }));
+};
+
+// Teacher account is stored in Supabase (student_accounts table, reserved row)
+// so the password is the same on every device / browser / port.
+export const TEACHER_CLOUD_USERNAME = '__teacher__';
+
+export const fetchTeacherProfileFromCloud = async (): Promise<TeacherProfile | null> => {
+  if (!isSupabaseConfigured || !supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('student_accounts')
+      .select('*')
+      .eq('username', TEACHER_CLOUD_USERNAME)
+      .maybeSingle();
+    if (error || !data) return null;
+    const profile: TeacherProfile = {
+      username: data.nickname || PRESET_TEACHER.username,
+      pin: data.password || PRESET_TEACHER.pin,
+      name: data.full_name || PRESET_TEACHER.name,
+      email: data.email || '',
+      schoolName: data.classroom || ''
+    };
+    saveTeacherProfileLocally(profile);
+    return profile;
+  } catch (e) {
+    console.warn('Could not load teacher profile from cloud', e);
+    return null;
+  }
+};
+
+/** Latest teacher profile: cloud first, local fallback */
+export const loadTeacherProfile = async (): Promise<TeacherProfile> => {
+  return (await fetchTeacherProfileFromCloud()) || getTeacherProfile();
+};
+
+export const updateTeacherProfile = async (
+  profile: Partial<TeacherProfile>
+): Promise<{ profile: TeacherProfile; cloudSaved: boolean }> => {
   const current = getTeacherProfile();
   const updated: TeacherProfile = {
     ...current,
@@ -63,10 +102,25 @@ export const updateTeacherProfile = (profile: Partial<TeacherProfile>): TeacherP
     username: profile.username !== undefined ? String(profile.username).trim() : current.username,
     name: profile.name !== undefined ? String(profile.name).trim() : current.name
   };
-  localStorage.setItem(TEACHER_PROFILE_KEY, JSON.stringify(updated));
-  try {
-    sessionStorage.setItem(TEACHER_PROFILE_KEY, JSON.stringify(updated));
-  } catch {}
-  window.dispatchEvent(new CustomEvent('teacher_profile_updated', { detail: updated }));
-  return updated;
+  saveTeacherProfileLocally(updated);
+
+  let cloudSaved = false;
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase.from('student_accounts').upsert({
+        username: TEACHER_CLOUD_USERNAME,
+        password: updated.pin,
+        full_name: updated.name,
+        classroom: updated.schoolName || '-',
+        nickname: updated.username,
+        alias: 'teacher',
+        email: updated.email || ''
+      });
+      cloudSaved = !error;
+      if (error) console.warn('Teacher profile cloud save error:', error.message);
+    } catch (e) {
+      console.warn('Could not save teacher profile to cloud', e);
+    }
+  }
+  return { profile: updated, cloudSaved };
 };

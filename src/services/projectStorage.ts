@@ -39,8 +39,8 @@ export const syncProjectsFromCloud = async (): Promise<Project[]> => {
       return getStoredProjects();
     }
 
-    if (data && data.length > 0) {
-      const mapped: Project[] = data.map((row: any) => ({
+    if (data) {
+      const cloudProjects: Project[] = data.map((row: any) => ({
         id: row.id,
         scenarioId: row.scenario_id,
         studentId: row.student_id,
@@ -57,8 +57,34 @@ export const syncProjectsFromCloud = async (): Promise<Project[]> => {
         updatedAt: row.updated_at
       }));
 
-      saveProjects(mapped);
-      return mapped;
+      // Merge: keep the newest version of each project; push local-only projects to cloud
+      const local = getStoredProjects();
+      const merged = new Map<string, Project>();
+      cloudProjects.forEach((p) => merged.set(p.id, p));
+      local.forEach((lp) => {
+        const cp = merged.get(lp.id);
+        if (!cp) {
+          merged.set(lp.id, lp);
+          syncProjectToCloud(lp);
+        } else if (new Date(lp.updatedAt).getTime() > new Date(cp.updatedAt).getTime()) {
+          merged.set(lp.id, lp);
+          syncProjectToCloud(lp);
+        }
+      });
+
+      const result = Array.from(merged.values()).sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      const signature = (list: Project[]) =>
+        JSON.stringify(
+          [...list]
+            .sort((a, b) => a.id.localeCompare(b.id))
+            .map((p) => [p.id, p.stageStatuses, p.scores, p.feedbackHistory, p.data, p.groupName, p.studentName])
+        );
+      if (signature(result) !== signature(local)) {
+        saveProjects(result);
+      }
+      return result;
     }
   } catch (err) {
     console.error('Failed to sync projects from Supabase:', err);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TeacherProfile, getTeacherProfile, updateTeacherProfile } from '../services/authService';
+import { TeacherProfile, getTeacherProfile, updateTeacherProfile, loadTeacherProfile } from '../services/authService';
 import { Shield, Eye, EyeOff, Save, X, CheckCircle2 } from 'lucide-react';
 
 interface TeacherProfileModalProps {
@@ -21,16 +21,20 @@ export const TeacherProfileModal: React.FC<TeacherProfileModalProps> = ({
   const [showPin, setShowPin] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  // Re-read fresh values from localStorage every time modal is opened
+  // Re-read fresh values (cloud first) every time modal is opened
   useEffect(() => {
     if (isOpen) {
-      const current = getTeacherProfile();
-      setName(current.name || '');
-      setUsername(current.username || '');
-      setPin(current.pin || '');
-      setEmail(current.email || '');
-      setSchoolName(current.schoolName || '');
+      const apply = (current: TeacherProfile) => {
+        setName(current.name || '');
+        setUsername(current.username || '');
+        setPin(current.pin || '');
+        setEmail(current.email || '');
+        setSchoolName(current.schoolName || '');
+      };
+      apply(getTeacherProfile());
+      loadTeacherProfile().then(apply);
       setError('');
       setSavedSuccess(false);
     }
@@ -38,7 +42,7 @@ export const TeacherProfileModal: React.FC<TeacherProfileModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -52,15 +56,21 @@ export const TeacherProfileModal: React.FC<TeacherProfileModalProps> = ({
       return;
     }
 
-    const updated = updateTeacherProfile({
+    setSaving(true);
+    const { profile: updated, cloudSaved } = await updateTeacherProfile({
       name: name.trim(),
       username: username.trim(),
       pin: pin.trim(),
       email: email.trim(),
       schoolName: schoolName.trim()
     });
+    setSaving(false);
 
     onProfileUpdated(updated);
+    if (!cloudSaved) {
+      setError('บันทึกในเครื่องนี้แล้ว แต่บันทึกขึ้นฐานข้อมูลออนไลน์ไม่สำเร็จ (ตรวจสอบอินเทอร์เน็ต) รหัสใหม่จะใช้ได้เฉพาะเครื่องนี้');
+      return;
+    }
     setSavedSuccess(true);
     setTimeout(() => {
       setSavedSuccess(false);
@@ -199,10 +209,11 @@ export const TeacherProfileModal: React.FC<TeacherProfileModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/25 transition flex items-center gap-1.5 cursor-pointer"
+              disabled={saving}
+              className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/25 transition flex items-center gap-1.5 cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>บันทึกการตั้งค่าโปรไฟล์</span>
+              <span>{saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่าโปรไฟล์'}</span>
             </button>
           </div>
         </form>

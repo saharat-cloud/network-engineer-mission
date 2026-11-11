@@ -24,7 +24,8 @@ import {
   createNewProject,
   syncProjectsFromCloud
 } from './services/projectStorage';
-import { getSession, setSession, clearSession, getTeacherProfile, TeacherProfile } from './services/authService';
+import { getSession, setSession, clearSession, getTeacherProfile, TeacherProfile, fetchTeacherProfileFromCloud } from './services/authService';
+import { ensureSampleData } from './services/seedService';
 import { SCENARIOS } from './data/constants';
 
 export const App: React.FC = () => {
@@ -71,6 +72,16 @@ export const App: React.FC = () => {
     });
   }, [currentUser, activeProject]);
 
+  // On startup: seed sample project, pull latest projects & teacher profile from cloud
+  useEffect(() => {
+    (async () => {
+      await ensureSampleData();
+      await syncProjectsFromCloud();
+      await fetchTeacherProfileFromCloud();
+      setActiveProject((prev) => (prev ? getProjectById(prev.id) || prev : prev));
+    })();
+  }, []);
+
   // Periodic polling & cross-tab storage detection for changes
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
@@ -92,11 +103,13 @@ export const App: React.FC = () => {
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('teacher_profile_updated', handleTeacherCustom);
 
-    // Also poll cloud/local state every 8 seconds to check for new approvals or submissions
+    // Poll cloud every 8 seconds to check for new approvals or submissions
+    const reviewSignature = (p: Project) => JSON.stringify([p.stageStatuses, p.feedbackHistory]);
     const interval = setInterval(async () => {
       if (activeProject && currentUser?.role === 'student') {
+        await syncProjectsFromCloud();
         const fresh = getProjectById(activeProject.id);
-        if (fresh && fresh.updatedAt !== activeProject.updatedAt) {
+        if (fresh && reviewSignature(fresh) !== reviewSignature(activeProject)) {
           setShowUpdateBanner(true);
           const lastFeedback = Object.values(fresh.feedbackHistory).flat().slice(-1)[0];
           if (lastFeedback) {
@@ -106,7 +119,7 @@ export const App: React.FC = () => {
           }
         }
       } else if (currentUser?.role === 'teacher') {
-        const stored = getStoredProjects();
+        const stored = await syncProjectsFromCloud();
         const pendingCount = stored.filter(p => Object.values(p.stageStatuses).some(s => s === 'SUBMITTED')).length;
         const lastCountStr = sessionStorage.getItem('nem_last_pending_count');
         const lastCount = lastCountStr !== null ? Number(lastCountStr) : pendingCount;

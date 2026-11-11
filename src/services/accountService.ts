@@ -82,6 +82,10 @@ export const registerStudentAccount = async (
   const cleanUsername = username.trim().toLowerCase();
   const accounts = getStoredAccounts();
 
+  if (cleanUsername.startsWith('__')) {
+    return { success: false, message: 'ไม่สามารถใช้ชื่อผู้ใช้นี้ได้' };
+  }
+
   if (accounts.some((a) => a.username.toLowerCase() === cleanUsername)) {
     return { success: false, message: 'ชื่อผู้ใช้นี้ (Username) ถูกใช้งานแล้ว กรุณาใช้ชื่ออื่น' };
   }
@@ -121,6 +125,10 @@ export const authenticateStudent = async (
 ): Promise<{ success: boolean; account?: StudentAccount; message?: string }> => {
   const cleanUsername = username.trim().toLowerCase();
   const cleanPassword = password.trim();
+
+  if (cleanUsername.startsWith('__')) {
+    return { success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' };
+  }
 
   if (isSupabaseConfigured && supabase) {
     try {
