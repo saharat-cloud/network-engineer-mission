@@ -181,7 +181,12 @@ export const App: React.FC = () => {
 
   const handleSelectScenario = (sc: Scenario) => {
     if (currentUser?.role === 'teacher') {
-      alert('คุณกำลังอยู่ในบทบาทครูผู้สอน');
+      const existing = getStoredProjects().find((p) => p.scenarioId === sc.id);
+      if (existing) {
+        setActiveProject(existing);
+        setActiveProjectId(existing.id);
+      }
+      setCurrentView('map');
       return;
     }
 
@@ -242,7 +247,7 @@ export const App: React.FC = () => {
       {/* Top Header Navigation */}
       <Navbar
         currentUser={currentUser}
-        activeProject={currentUser.role === 'student' ? activeProject : null}
+        activeProject={activeProject}
         currentView={currentView}
         onNavigate={(view) => {
           if (view === 'teacher' && currentUser.role !== 'teacher') {
@@ -266,8 +271,28 @@ export const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* TEACHER EXCLUSIVE VIEW */}
-        {currentUser.role === 'teacher' ? (
+        {/* Teacher Mode Indicator Banner when browsing other views */}
+        {currentUser.role === 'teacher' && currentView !== 'teacher' && (
+          <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-300">
+            <div className="flex items-center gap-2">
+              <span className="font-bold bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded-full text-[11px]">
+                โหมดอาจารย์
+              </span>
+              <span>
+                กำลังดูมุมมองนักเรียน: <strong className="text-white">{activeProject?.studentName || 'ตัวอย่าง'}</strong> ({activeProject?.groupName || '-'})
+              </span>
+            </div>
+            <button
+              onClick={() => setCurrentView('teacher')}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition shadow-sm cursor-pointer flex items-center gap-1.5"
+            >
+              <span>← กลับสู่แดชบอร์ดตรวจงาน</span>
+            </button>
+          </div>
+        )}
+
+        {/* 1) TEACHER DASHBOARD VIEW */}
+        {currentView === 'teacher' && currentUser.role === 'teacher' && (
           <TeacherPortal
             teacherProfile={currentTeacher}
             onSelectProjectForView={(proj) => {
@@ -277,102 +302,103 @@ export const App: React.FC = () => {
             }}
             onTeacherProfileUpdated={handleTeacherProfileUpdated}
           />
-        ) : (
-          /* STUDENT EXCLUSIVE VIEWS */
-          <>
-            {currentView === 'home' && (
-              <LandingPage
-                onStartMission={() => {
-                  if (activeProject) setCurrentView('map');
-                  else setCurrentView('scenarios');
-                }}
-                onExploreScenarios={() => setCurrentView('scenarios')}
-              />
-            )}
+        )}
 
-            {currentView === 'scenarios' && (
-              <ScenariosView
-                activeProject={activeProject}
-                onSelectScenario={handleSelectScenario}
-              />
-            )}
+        {/* 2) HOME / LANDING VIEW */}
+        {currentView === 'home' && (
+          <LandingPage
+            onStartMission={() => {
+              if (activeProject) setCurrentView('map');
+              else setCurrentView('scenarios');
+            }}
+            onExploreScenarios={() => setCurrentView('scenarios')}
+          />
+        )}
 
-            {currentView === 'map' && activeProject && (
-              <MissionMapView
-                project={activeProject}
-                onOpenStage={(stageNum) => setCurrentView(`stage-${stageNum}`)}
-              />
-            )}
+        {/* 3) SCENARIOS VIEW */}
+        {currentView === 'scenarios' && (
+          <ScenariosView
+            activeProject={activeProject}
+            onSelectScenario={handleSelectScenario}
+          />
+        )}
 
-            {currentView === 'stage-1' && activeProject && (
-              <Stage01Analysis
-                project={activeProject}
-                scenario={currentScenario}
-                onSave={(data) => handleSaveStageData(1, data)}
-                onSubmitStage={(data) => handleSubmitStage(1, data)}
-                onBackToMap={() => setCurrentView('map')}
-              />
-            )}
+        {/* 4) MISSION MAP VIEW */}
+        {currentView === 'map' && activeProject && (
+          <MissionMapView
+            project={activeProject}
+            onOpenStage={(stageNum) => setCurrentView(`stage-${stageNum}`)}
+          />
+        )}
 
-            {currentView === 'stage-2' && activeProject && (
-              <Stage02Topology
-                project={activeProject}
-                onSave={(data) => handleSaveStageData(2, data)}
-                onSubmitStage={(data) => handleSubmitStage(2, data)}
-                onBackToMap={() => setCurrentView('map')}
-              />
-            )}
+        {/* 5) STAGES 1 TO 7 */}
+        {currentView === 'stage-1' && activeProject && (
+          <Stage01Analysis
+            project={activeProject}
+            scenario={currentScenario}
+            onSave={(data) => handleSaveStageData(1, data)}
+            onSubmitStage={(data) => handleSubmitStage(1, data)}
+            onBackToMap={() => setCurrentView('map')}
+          />
+        )}
 
-            {currentView === 'stage-3' && activeProject && (
-              <Stage03Budget
-                project={activeProject}
-                scenario={currentScenario}
-                onSave={(data) => handleSaveStageData(3, data)}
-                onSubmitStage={(data) => handleSubmitStage(3, data)}
-                onBackToMap={() => setCurrentView('map')}
-              />
-            )}
+        {currentView === 'stage-2' && activeProject && (
+          <Stage02Topology
+            project={activeProject}
+            onSave={(data) => handleSaveStageData(2, data)}
+            onSubmitStage={(data) => handleSubmitStage(2, data)}
+            onBackToMap={() => setCurrentView('map')}
+          />
+        )}
 
-            {currentView === 'stage-4' && activeProject && (
-              <Stage04Tools
-                project={activeProject}
-                scenario={currentScenario}
-                onSave={(data) => handleSaveStageData(4, data)}
-                onSubmitStage={(data) => handleSubmitStage(4, data)}
-                onBackToMap={() => setCurrentView('map')}
-              />
-            )}
+        {currentView === 'stage-3' && activeProject && (
+          <Stage03Budget
+            project={activeProject}
+            scenario={currentScenario}
+            onSave={(data) => handleSaveStageData(3, data)}
+            onSubmitStage={(data) => handleSubmitStage(3, data)}
+            onBackToMap={() => setCurrentView('map')}
+          />
+        )}
 
-            {currentView === 'stage-5' && activeProject && (
-              <Stage05Planning
-                project={activeProject}
-                scenario={currentScenario}
-                onSave={(data) => handleSaveStageData(5, data)}
-                onSubmitStage={(data) => handleSubmitStage(5, data)}
-                onBackToMap={() => setCurrentView('map')}
-              />
-            )}
+        {currentView === 'stage-4' && activeProject && (
+          <Stage04Tools
+            project={activeProject}
+            scenario={currentScenario}
+            onSave={(data) => handleSaveStageData(4, data)}
+            onSubmitStage={(data) => handleSubmitStage(4, data)}
+            onBackToMap={() => setCurrentView('map')}
+          />
+        )}
 
-            {currentView === 'stage-6' && activeProject && (
-              <Stage06Config
-                project={activeProject}
-                scenario={currentScenario}
-                onSave={(data) => handleSaveStageData(6, data)}
-                onSubmitStage={(data) => handleSubmitStage(6, data)}
-                onBackToMap={() => setCurrentView('map')}
-              />
-            )}
+        {currentView === 'stage-5' && activeProject && (
+          <Stage05Planning
+            project={activeProject}
+            scenario={currentScenario}
+            onSave={(data) => handleSaveStageData(5, data)}
+            onSubmitStage={(data) => handleSubmitStage(5, data)}
+            onBackToMap={() => setCurrentView('map')}
+          />
+        )}
 
-            {currentView === 'stage-7' && activeProject && (
-              <Stage07Final
-                project={activeProject}
-                scenario={currentScenario}
-                onSave={(data) => handleSaveStageData(7, data)}
-                onSubmitProject={(data) => handleSubmitStage(7, data)}
-                onBackToMap={() => setCurrentView('map')}
-              />
-            )}
-          </>
+        {currentView === 'stage-6' && activeProject && (
+          <Stage06Config
+            project={activeProject}
+            scenario={currentScenario}
+            onSave={(data) => handleSaveStageData(6, data)}
+            onSubmitStage={(data) => handleSubmitStage(6, data)}
+            onBackToMap={() => setCurrentView('map')}
+          />
+        )}
+
+        {currentView === 'stage-7' && activeProject && (
+          <Stage07Final
+            project={activeProject}
+            scenario={currentScenario}
+            onSave={(data) => handleSaveStageData(7, data)}
+            onSubmitProject={(data) => handleSubmitStage(7, data)}
+            onBackToMap={() => setCurrentView('map')}
+          />
         )}
       </main>
 
